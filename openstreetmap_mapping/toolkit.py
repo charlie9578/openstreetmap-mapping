@@ -58,7 +58,11 @@ def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)"):
 
     data = osm_overpass_query(overpass_query)
 
+    #print(data)
+    
     elements = data['elements']
+
+    #print(elements)
 
     if elements:
         df = pd.DataFrame.from_records(elements)
@@ -88,7 +92,7 @@ def get_osm_wind_turbines(area="(55,-2,49.7564, -2.0895)"):
     data dictionary
     """
   
-    df = get_osm_node(key="generator:method",tag="wind_turbine",area=area)
+    df = get_osm_data(key="generator:method",tag="wind_turbine",area=area)
 
     return df
 
@@ -203,7 +207,7 @@ def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_si
     map_df['key'] = map_df['key'].apply(str)
 
     # Define default and then update figure and marker options based on kwargs
-    figure_options = {"tools":"save,hover,pan,wheel_zoom,reset,help",
+    figure_options = {"tools":"save,hover,tap,pan,wheel_zoom,reset,help",
         "x_axis_label":"lat",
         "y_axis_label":"lat",
         "match_aspect":True,
@@ -223,7 +227,7 @@ def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_si
     
     # Create an appropriate fill color map and contrasting line color
     if marker_options["fill_color"] == "auto_fill_color":
-        color_grouping = marker_options["legend_group"]
+        color_grouping = marker_options["legend_grouping"]
 
         map_df = map_df.sort_values(color_grouping)
 
@@ -261,25 +265,36 @@ def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_si
     plot_map.add_tile(MAP_TILES[tile_name])
 
 
-    # Plot the asset devices   
-    markers = plot_map.scatter(x="x", y="y",
-        source=source,
-        size=marker_size,
-        **marker_options)
+    # Plot the asset devices
+    for legend_group in set(map_df[marker_options["legend_group"]]):
+
+        source = ColumnDataSource(map_df.loc[map_df[marker_options["legend_group"]]==legend_group])
+
+        marker_options_plot = marker_options.copy()
+
+        marker_options_plot["legend_label"] = legend_group
+        del marker_options_plot["legend_group"]
+
+        markers = plot_map.scatter(x="x", y="y",
+            source=source,
+            size=marker_size,
+            **marker_options_plot)
 
 
     return plot_map
 
 
 def get_osm_kvs():
-    resp = requests.get('https://raw.githubusercontent.com/openstreetmap/iD/release/dist/data/taginfo.min.json')
+    
+    resp = requests.get(r'https://taginfo.openstreetmap.org/api/4/projects/tags')
+
     string = resp.text
 
     d = json.loads(string)
 
     kvs = dict()
 
-    for kv_pair in d['tags']:
+    for kv_pair in d['data']:
         
         if 'value' in kv_pair.keys():
             

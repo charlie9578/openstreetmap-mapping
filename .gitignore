@@ -1,2 +1,3 @@
 openstreetmap_mapping.egg*
 *.pyc
+*checkpoint*
