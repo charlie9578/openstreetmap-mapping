@@ -32,13 +32,14 @@ def osm_overpass_query(overpass_query):
     return data
           
 
-def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)"):
+def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="center"):
     """Get OpenMap key:tag nodes in a given area
     
     Parameters::
     key
     tag
     area=(south,west,north,east) in longitude and latitude as a string
+    output: center=return the centre of the way points, geom=returns all node lat/lons
     
     Returns::
     dataframe
@@ -51,7 +52,7 @@ def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)"):
     way[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
     rel[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
     );
-    out center;
+    out """+output+""";
     """ 
 
     #print(overpass_query)
@@ -72,6 +73,9 @@ def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)"):
         if 'center' in df.columns:
             df.loc[df['center'].notnull(),['lat','lon']] = pd.DataFrame.from_records(list(df[df['center'].notnull()]['center'])).set_index(df.loc[df['center'].notnull()].index)
     
+        if 'geometry' in df.columns:
+            df.loc[df['geometry'].notnull(),['lat','lon']] = pd.DataFrame.from_records(df.loc[df['geometry'].notnull(),'geometry'].map(lambda cell: pd.DataFrame.from_records(cell).mean()))
+
     else:
         print("No specified nodes found in area")
         df = pd.DataFrame()
@@ -162,12 +166,12 @@ def color_to_rgb(color):
 
 
 
-def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_size=14,kwargs_for_figure={},kwargs_for_marker={}):
+def plot_latlon(df,tile_name="ESRI",plot_width=800,plot_height=800,marker_size=14,kwargs_for_figure={},kwargs_for_marker={}):
 
-    """Plot the map_df on a map
+    """Plot the df on a map
 
     Args:
-        map_df(:obj:`plant object`): project to be plotted, must include lat, lon, tags
+        df(:obj:`plant object`): project to be plotted, must include lat, lon, tags
         tile_name(:obj:`str`): tile set to be used for the underlay, e.g. OpenMap, ESRI, OpenTopoMap
         plot_width(:obj:`scalar`): width of plot
         plot_height(:obj:`scalar`): height of plot
@@ -200,6 +204,8 @@ def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_si
     # Use pyproj to transform longitude and latitude into web-mercator and add to a copy of the asset dataframe
     TRANSFORM_4326_TO_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857")
     
+    map_df = df.copy()
+    
     map_df["x"],map_df["y"] = TRANSFORM_4326_TO_3857.transform(map_df['lat'],map_df['lon'])   
     map_df["coordinates"]=tuple(zip(map_df["lat"],map_df["lon"]))
     map_df['tags'] = map_df['tags'].apply(str)
@@ -227,7 +233,7 @@ def plot_latlon(map_df,tile_name="ESRI",plot_width=800,plot_height=800,marker_si
     
     # Create an appropriate fill color map and contrasting line color
     if marker_options["fill_color"] == "auto_fill_color":
-        color_grouping = marker_options["legend_grouping"]
+        color_grouping = marker_options["legend_group"]
 
         map_df = map_df.sort_values(color_grouping)
 
