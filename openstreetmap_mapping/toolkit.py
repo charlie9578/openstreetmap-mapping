@@ -86,6 +86,80 @@ def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="cente
     return df
 
 
+def get_osm_id_data(member_id="5574761791",obj_type="node",output="center",recursion=""):
+    
+    
+    overpass_query = """
+    [out:json];
+    (
+    """+obj_type+"""("""+str(member_id)+""");
+        """+recursion+"""
+    );
+
+    out """+output+""";
+    """ 
+
+    #print(overpass_query)
+
+    data = osm_overpass_query(overpass_query)
+
+    return data
+
+    
+
+def get_osm_data_by_id(member_id="5574761791",obj_type="node",output="center",recursion=""):
+    """Get OpenMap key:tag nodes in a given area
+    
+    Parameters::
+    type = node, way, or rel/relation
+    tag
+    area=(south,west,north,east) in longitude and latitude as a string
+    output: center=return the centre of the way points, geom=returns all node lat/lons
+    
+    Returns::
+    dataframe
+    """
+
+    overpass_query = """
+    [out:json];
+    (
+    """+obj_type+"""("""+str(member_id)+""");
+        """+recursion+"""
+    );
+    
+    out """+output+""";
+    """ 
+
+    #print(overpass_query)
+
+    data = osm_overpass_query(overpass_query)
+
+    #print(data)
+    
+    elements = data['elements']
+
+    #print(elements)
+
+    if elements:
+        df = pd.DataFrame.from_records(elements)
+        df = df.dropna(subset=['tags'])
+
+        if 'tags' in df.columns:
+            df[pd.DataFrame.from_records(df['tags']).columns] = pd.DataFrame.from_records(df['tags'])
+
+        if 'center' in df.columns:
+            df.loc[df['center'].notnull(),['lat','lon']] = pd.DataFrame.from_records(list(df[df['center'].notnull()]['center'])).set_index(df.loc[df['center'].notnull()].index)
+    
+        if 'geometry' in df.columns:
+            df.loc[df['geometry'].notnull(),['lat','lon']] = pd.DataFrame.from_records(df.loc[df['geometry'].notnull(),'geometry'].map(lambda cell: pd.DataFrame.from_records(cell).mean()))
+
+    else:
+        print("No specified nodes found in area")
+        df = pd.DataFrame()
+    
+    return df
+
+
 def get_osm_wind_turbines(area="(55,-2,49.7564, -2.0895)"):
     """Get OpenMap wind turbine data
     
@@ -259,9 +333,6 @@ def plot_latlon(df,tile_name="ESRI",plot_width=800,plot_height=800,marker_size=1
             #print(marker_options["fill_color"])
 
 
-    # Create the bokeh data source
-    source = ColumnDataSource(map_df)
-
     
     # Create a bokeh figure with tiles
     plot_map = figure(plot_width=plot_width, plot_height=plot_height,
@@ -281,7 +352,7 @@ def plot_latlon(df,tile_name="ESRI",plot_width=800,plot_height=800,marker_size=1
         marker_options_plot["legend_label"] = legend_group
         del marker_options_plot["legend_group"]
 
-        markers = plot_map.scatter(x="x", y="y",
+        plot_map.scatter(x="x", y="y",
             source=source,
             size=marker_size,
             **marker_options_plot)
