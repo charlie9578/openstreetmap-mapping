@@ -27,7 +27,12 @@ def osm_overpass_query(overpass_query):
 
     response = requests.get(overpass_url, 
                             params={'data': overpass_query})
-    data = response.json()
+
+    try:                            
+        data = response.json()
+    except:
+        print(overpass_query)
+        print(response)
     
     return data
           
