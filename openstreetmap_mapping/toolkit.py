@@ -368,28 +368,32 @@ def plot_latlon(df,tile_name="ESRI",plot_width=800,plot_height=800,marker_size=1
 
 def get_osm_kvs():
     
-    resp = requests.get(r'https://taginfo.openstreetmap.org/api/4/projects/tags')
-
-    string = resp.text
-
-    d = json.loads(string)
-
     kvs = dict()
 
-    for kv_pair in d['data']:
-        
-        if 'value' in kv_pair.keys():
-            
-            kv_pair['key'] = kv_pair['key'].replace(':', '__')
-            kv_pair['value'] = kv_pair['value'].replace(':', '__')
-            
-            if kv_pair['key'] in kvs.keys():
-                kvs[kv_pair['key']][kv_pair['value']] = {'value':kv_pair['value']}
+    for page in range(100):
 
-            else:
-                kvs[kv_pair['key']] = dict()
-                kvs[kv_pair['key']]['value'] = kv_pair['key']
-                kvs[kv_pair['key']][kv_pair['value']] = {'value':kv_pair['value']}
+        url = r"https://taginfo.openstreetmap.org/api/4/projects/tags?sortname=count_all&sortorder=desc&page="+str(page+1)+r"&rp=100&qtype=tags&format=json_pretty"
+
+        resp = requests.get(url)
+
+        string = resp.text
+
+        d = json.loads(string)
+
+        for kv_pair in d['data']:
+            
+            if 'value' in kv_pair.keys():
+                
+                kv_pair['key'] = kv_pair['key'].replace(':', '__')
+                kv_pair['value'] = kv_pair['value'].replace(':', '__')
+                
+                if kv_pair['key'] in kvs.keys():
+                    kvs[kv_pair['key']][kv_pair['value']] = {'value':kv_pair['value']}
+
+                else:
+                    kvs[kv_pair['key']] = dict()
+                    kvs[kv_pair['key']]['value'] = kv_pair['key']
+                    kvs[kv_pair['key']][kv_pair['value']] = {'value':kv_pair['value']}
 
        
     return kvs
