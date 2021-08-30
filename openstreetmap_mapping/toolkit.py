@@ -12,6 +12,8 @@ from pyproj import Transformer
 
 import matplotlib
 
+import time
+
 def osm_overpass_query(overpass_query):
     """Get OpenMap data based on an overpass_query
      
@@ -21,21 +23,56 @@ def osm_overpass_query(overpass_query):
     https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
     """
     
-    
-    
-    overpass_url = "http://overpass-api.de/api/interpreter"
 
-    response = requests.get(overpass_url, 
-                            params={'data': overpass_query})
-
-    try:                            
-        data = response.json()
-    except:
-        print(overpass_query)
-        print(response)
     
-    return data
-          
+    
+
+    attempt = 0
+    while attempt < 15:
+        attempt = attempt+1
+
+        overpass_status = "http://overpass-api.de/api/status"
+        response = requests.get(overpass_status,
+                                headers={'Referer':'https://github.com/charlie9578/openstreetmap-mapping',
+                                'User-agent': 'https://github.com/charlie9578/openstreetmap-mapping'})
+
+        if response.text.split("\n")[3][0] == '0':
+            time.sleep(1) # Sleep for 1 seconds
+            print(response.text)
+
+        else:
+            attempt = 15
+            
+            overpass_url = "http://overpass-api.de/api/interpreter"
+
+            response = requests.get(overpass_url, 
+                                    params={'data': overpass_query},
+                                    headers={'Referer':'https://github.com/charlie9578/openstreetmap-mapping',
+                                    'User-agent': 'https://github.com/charlie9578/openstreetmap-mapping'})
+
+
+            
+            try:                            
+                data = response.json()
+        
+            except requests.exceptions.Timeout:
+                print("Timeout")
+                print(response)
+
+            # Maybe set up for a retry, or continue in a retry loop
+            except requests.exceptions.TooManyRedirects:
+                print("TooManyRedirects")
+                print(response)
+
+            # Final exception
+            except:
+                print("RequestException")
+                print(overpass_query)
+                print(response)      
+                print(response.text)
+                
+            return data
+                
 
 def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="center"):
     """Get OpenMap key:tag nodes in a given area
