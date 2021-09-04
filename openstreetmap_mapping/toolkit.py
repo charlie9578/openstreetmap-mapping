@@ -1,4 +1,5 @@
 import requests
+
 import json
 
 import pandas as pd
@@ -14,6 +15,10 @@ import matplotlib
 
 import time
 
+from requests.packages.urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
+
 def osm_overpass_query(overpass_query):
     """Get OpenMap data based on an overpass_query
      
@@ -23,55 +28,23 @@ def osm_overpass_query(overpass_query):
     https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
     """
     
+    overpass_url = "http://overpass-api.de/api/interpreter"
 
-    
-    
+    s = requests.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[429,504])
+    s.mount('http://', HTTPAdapter(max_retries=retries))
 
-    attempt = 0
-    while attempt < 15:
-        attempt = attempt+1
+    response = s.get(overpass_url, 
+        params={'data': overpass_query},
+        headers={'Referer':'https://github.com/charlie9578/openstreetmap-mapping',
+        'User-agent': 'https://github.com/charlie9578/openstreetmap-mapping'})
 
-        overpass_status = "http://overpass-api.de/api/status"
-        response = requests.get(overpass_status,
-                                headers={'Referer':'https://github.com/charlie9578/openstreetmap-mapping',
-                                'User-agent': 'https://github.com/charlie9578/openstreetmap-mapping'})
+    try:
+        data = response.json()
+    except:
+        print(response)
 
-        if response.text.split("\n")[3][0] == '0':
-            time.sleep(1) # Sleep for 1 seconds
-            print(response.text)
-
-        else:
-            attempt = 15
-            
-            overpass_url = "http://overpass-api.de/api/interpreter"
-
-            response = requests.get(overpass_url, 
-                                    params={'data': overpass_query},
-                                    headers={'Referer':'https://github.com/charlie9578/openstreetmap-mapping',
-                                    'User-agent': 'https://github.com/charlie9578/openstreetmap-mapping'})
-
-
-            
-            try:                            
-                data = response.json()
-        
-            except requests.exceptions.Timeout:
-                print("Timeout")
-                print(response)
-
-            # Maybe set up for a retry, or continue in a retry loop
-            except requests.exceptions.TooManyRedirects:
-                print("TooManyRedirects")
-                print(response)
-
-            # Final exception
-            except:
-                print("RequestException")
-                print(overpass_query)
-                print(response)      
-                print(response.text)
-                
-            return data
+    return data
                 
 
 def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="center"):
