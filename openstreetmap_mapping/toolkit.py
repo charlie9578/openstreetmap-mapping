@@ -47,7 +47,7 @@ def osm_overpass_query(overpass_query):
     return data
                 
 
-def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="center"):
+def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="center",recursion="",element=""):
     """Get OpenMap key:tag nodes in a given area
     
     Parameters::
@@ -60,15 +60,27 @@ def get_osm_data(key="amenity",tag="post_box",area="(55,-2,56,-1)",output="cente
     dataframe
     """
 
-    overpass_query = """
-    [out:json];
-    (
-    node[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
-    way[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
-    rel[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
-    );
-    out """+output+""";
-    """ 
+    if element != "":
+        overpass_query = """
+        [out:json];
+        (
+        """+element+"""[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
+        """+recursion+"""
+        );
+        out """+output+""";
+        """ 
+
+    else:
+        overpass_query = """
+        [out:json];
+        (
+        node[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
+        way[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
+        rel[\""""+str(key)+"""\"=\""""+str(tag)+"""\"]"""+area+""";
+        """+recursion+"""
+        );
+        out """+output+""";
+        """ 
 
     #print(overpass_query)
 
