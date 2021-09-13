@@ -2,3 +2,4 @@ openstreetmap_mapping.egg*
 *.pyc
 *checkpoint*
 *.pkl
+*.html
